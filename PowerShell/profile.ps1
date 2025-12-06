@@ -34,8 +34,8 @@ if (!(Test-Path $toolsPath)) {
 . $PSScriptRoot/machine_setup.ps1
 . $PSScriptRoot/helpers.ps1
 . $PSScriptRoot/visualstudio.ps1
-if (Test-Path "$PSScriptRoot/workspecific.ps1") {
-    . $PSScriptRoot/workspecific.ps1
+if (Test-Path "$PSScriptRoot/private.ps1") {
+    . $PSScriptRoot/private.ps1
 }
 
 $env:path += ";$toolsPath\;$toolsPath\jre1.8.0_121\bin"
