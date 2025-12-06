@@ -1,65 +1,251 @@
-# Toolbag
+# Utilities for window management in PowerShell
 
-A collection of PowerShell utilities and scripts for Windows development environment management.
+# https://www.powershellmagazine.com/2013/07/18/pstip-how-to-switch-off-display-with-powershell/
+# Turn display off by calling WindowsAPI.
+ 
+# SendMessage(HWND_BROADCAST,WM_SYSCOMMAND, SC_MONITORPOWER, POWER_OFF)
+# HWND_BROADCAST  0xffff
+# WM_SYSCOMMAND   0x0112
+# SC_MONITORPOWER 0xf170
+# POWER_OFF       0x0002
+ 
+Add-Type -TypeDefinition '
+using System;
+using System.Runtime.InteropServices;
+ 
+namespace Utilities {
+   public static class Display
+   {
+      [DllImport("user32.dll", CharSet = CharSet.Auto)]
+      private static extern IntPtr SendMessage(
+         IntPtr hWnd,
+         UInt32 Msg,
+         IntPtr wParam,
+         IntPtr lParam
+      );
+ 
+      public static void PowerOff ()
+      {
+         SendMessage(
+            (IntPtr)0xffff, // HWND_BROADCAST
+            0x0112,         // WM_SYSCOMMAND
+            (IntPtr)0xf170, // SC_MONITORPOWER
+            (IntPtr)0x0002  // POWER_OFF
+         );
+      }
+   }
+}
+'
 
-## PowerShell Scripts
+function Stop-Display {
+    [Utilities.Display]::PowerOff()
+}
 
-### profile.ps1
-Main PowerShell profile that loads all other scripts and configures the shell environment.
+Set-Alias DisplayOff Stop-Display
+Set-Alias off Stop-Display
+Set-Alias MonOff Stop-Display
 
-**Features:**
-- Configures posh-git with custom prompt settings
-- Sets up directory colors
-- Defines repository and tools paths with fallback locations
-- Imports all utility scripts (windowing, machine_setup, helpers, visualstudio)
-- Configures PATH environment with common development tools (Git, .NET, npm, VS Code)
-- Sets Beyond Compare as default comparison tool
+function Gather-AllWindows {
+    $allWindows = Get-AllWindows
+    $offset = 0
+    foreach ($window in $allWindows) {
+        $window | Set-Window -X $offset -Y $offset
+        # $offset = $offset + 5
+    }
+}
 
-### helpers.ps1
-General-purpose utility functions for common development tasks.
+# https://devblogs.microsoft.com/scripting/hey-scripting-guy-how-can-i-use-windows-powershell-to-get-a-list-of-all-the-open-windows-on-a-computer/
+function Get-AllWindows {
+    Get-Process | Where-Object { $_.MainWindowTitle -ne "" }
+}
 
-**Functions:**
-- `which` - Finds the full path of a command
-- `Set-Title` - Changes the PowerShell window title
-- `Convert-MessageBody` - Decodes base64-encoded message bodies
-- `ConvertFrom-UnixTime` / `ConvertTo-UnixTime` - Unix timestamp conversion utilities
-- `Get-GitRemote` - Retrieves the origin URL for a git repository
-- `Get-GitBranchList` - Lists git branches sorted by most recent commit with details
-- `Get-AssemblyVersion` - Extracts version information from .NET assemblies
-- `Decode-Clipboard` / `Decode-Text` - Base64 decoding utilities
+# https://superuser.com/questions/1324007/setting-window-size-and-position-in-powershell-5-and-6
+function Set-Window {
+<#
+.SYNOPSIS
+Retrieve/Set the window size and coordinates of a process window.
 
-### windowing.ps1
-Window management utilities using Windows API calls.
+.DESCRIPTION
+Retrieve/Set the size (height,width) and coordinates (x,y) 
+of a process window.
 
-**Functions:**
-- `Stop-Display` - Turns off the display (aliases: `DisplayOff`, `off`, `MonOff`)
-- `Gather-AllWindows` - Arranges all open windows in a cascading pattern
-- `Get-AllWindows` - Retrieves all processes with visible windows
-- `Set-Window` - Comprehensive window positioning and sizing utility with support for:
-  - Setting window position (X, Y coordinates)
-  - Setting window size (Width, Height)
-  - Working with processes by name or ID
-  - Pipeline support for batch operations
+.PARAMETER ProcessName
+Name of the process to determine the window characteristics. 
+(All processes if omitted).
 
-### machine_setup.ps1
-System configuration functions for setting up a Windows development machine.
+.PARAMETER Id
+Id of the process to determine the window characteristics. 
 
-**Functions:**
-- `Set-MouseWheelInverted` - Inverts mouse wheel scrolling direction (alias: `FlipFlopWheel`)
-- `Set-CapsLockMappedToControl` - Remaps CapsLock key to Control via registry
-- `Set-PowerShellProfileDirectory` - Configures custom PowerShell profile location
+.PARAMETER X
+Set the position of the window in pixels from the left.
 
-### visualstudio.ps1
-Visual Studio integration and shortcuts.
+.PARAMETER Y
+Set the position of the window in pixels from the top.
 
-**Features:**
-- Auto-loads Visual Studio Developer Shell (supports VS 2026 Insiders or Enterprise)
-- `code` - Launches VS Code with medium integrity from admin console (requires gsudo)
-- `sln` - Smart solution file launcher that:
-  - Prioritizes .slnx files over .sln files
-  - Searches current directory and subdirectories
-  - Opens the first matching solution file
+.PARAMETER Width
+Set the width of the window.
 
-## Usage
+.PARAMETER Height
+Set the height of the window.
 
-To use these scripts, dot-source `profile.ps1` in your PowerShell profile or set it as your profile location using `Set-PowerShellProfileDirectory`.
+.PARAMETER Passthru
+Returns the output object of the window.
+
+.NOTES
+Name:   Set-Window
+Author: Boe Prox
+Version History:
+    1.0//Boe Prox - 11/24/2015 - Initial build
+    1.1//JosefZ   - 19.05.2018 - Treats more process instances 
+                                    of supplied process name properly
+    1.2//JosefZ   - 21.02.2019 - Parameter Id
+
+.OUTPUTS
+None
+System.Management.Automation.PSCustomObject
+System.Object
+
+.EXAMPLE
+Get-Process powershell | Set-Window -X 20 -Y 40 -Passthru -Verbose
+VERBOSE: powershell (Id=11140, Handle=132410)
+
+Id          : 11140
+ProcessName : powershell
+Size        : 1134,781
+TopLeft     : 20,40
+BottomRight : 1154,821
+
+Description: Set the coordinates on the window for the process PowerShell.exe
+
+.EXAMPLE
+$windowArray = Set-Window -Passthru
+WARNING: cmd (1096) is minimized! Coordinates will not be accurate.
+
+    PS C:\>$windowArray | Format-Table -AutoSize
+
+    Id ProcessName    Size     TopLeft       BottomRight  
+    -- -----------    ----     -------       -----------  
+1096 cmd            199,34   -32000,-32000 -31801,-31966
+4088 explorer       1280,50  0,974         1280,1024    
+6880 powershell     1280,974 0,0           1280,974     
+
+Description: Get the coordinates of all visible windows and save them into the
+                $windowArray variable. Then, display them in a table view.
+
+.EXAMPLE
+Set-Window -Id $PID -Passthru | Format-Table
+​‌‍
+    Id ProcessName Size     TopLeft BottomRight
+    -- ----------- ----     ------- -----------
+7840 pwsh        1024,638 0,0     1024,638
+
+Description: Display the coordinates of the window for the current 
+                PowerShell session in a table view.
+#>
+[cmdletbinding(DefaultParameterSetName='Name')]
+Param (
+    [parameter(Mandatory=$False,
+        ValueFromPipelineByPropertyName=$True, ParameterSetName='Name')]
+    [string]$ProcessName='*',
+    [parameter(Mandatory=$True,
+        ValueFromPipeline=$False,              ParameterSetName='Id')]
+    [int]$Id,
+    [int]$X,
+    [int]$Y,
+    [int]$Width,
+    [int]$Height,
+    [switch]$Passthru
+)
+Begin {
+
+    Try { 
+        [void][Window]
+    } Catch {
+    Add-Type @"
+        using System;
+        using System.Runtime.InteropServices;
+        public class Window
+        {
+            [DllImport("user32.dll")]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+            [DllImport("user32.dll")]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public extern static bool MoveWindow(IntPtr handle, int x, int y, int width, int height, bool redraw);
+
+            [DllImport("user32.dll")] 
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public static extern bool ShowWindow(IntPtr handle, int state);
+        }
+        public struct RECT
+        {
+            public int Left;        // x position of upper-left corner
+            public int Top;         // y position of upper-left corner
+            public int Right;       // x position of lower-right corner
+            public int Bottom;      // y position of lower-right corner
+        }
+"@
+    }
+}
+Process {
+    $Rectangle = New-Object RECT
+    If ( $PSBoundParameters.ContainsKey('Id') ) {
+        $Processes = Get-Process -Id $Id -ErrorAction SilentlyContinue
+    } else {
+        $Processes = Get-Process -Name "$ProcessName" -ErrorAction SilentlyContinue
+    }
+    if ( $null -eq $Processes ) {
+        If ( $PSBoundParameters['Passthru'] ) {
+            Write-Warning 'No process match criteria specified'
+        }
+    } else {
+        $Processes | ForEach-Object {
+            $Handle = $_.MainWindowHandle
+            Write-Verbose "$($_.ProcessName) `(Id=$($_.Id), Handle=$Handle`)"
+            if ( $Handle -eq [System.IntPtr]::Zero ) { return }
+            $Return = [Window]::GetWindowRect($Handle,[ref]$Rectangle)
+            If (-NOT $PSBoundParameters.ContainsKey('X')) {
+                $X = $Rectangle.Left            
+            }
+            If (-NOT $PSBoundParameters.ContainsKey('Y')) {
+                $Y = $Rectangle.Top
+            }
+            If (-NOT $PSBoundParameters.ContainsKey('Width')) {
+                $Width = $Rectangle.Right - $Rectangle.Left
+            }
+            If (-NOT $PSBoundParameters.ContainsKey('Height')) {
+                $Height = $Rectangle.Bottom - $Rectangle.Top
+            }
+            If ( $Return ) {
+                $Return = [Window]::MoveWindow($Handle, $x, $y, $Width, $Height,$True)
+            }
+            If ( $PSBoundParameters['Passthru'] ) {
+                $Rectangle = New-Object RECT
+                $Return = [Window]::GetWindowRect($Handle,[ref]$Rectangle)
+                If ( $Return ) {
+                    $Height      = $Rectangle.Bottom - $Rectangle.Top
+                    $Width       = $Rectangle.Right  - $Rectangle.Left
+                    $Size        = New-Object System.Management.Automation.Host.Size        -ArgumentList $Width, $Height
+                    $TopLeft     = New-Object System.Management.Automation.Host.Coordinates -ArgumentList $Rectangle.Left , $Rectangle.Top
+                    $BottomRight = New-Object System.Management.Automation.Host.Coordinates -ArgumentList $Rectangle.Right, $Rectangle.Bottom
+                    If ($Rectangle.Top    -lt 0 -AND 
+                        $Rectangle.Bottom -lt 0 -AND
+                        $Rectangle.Left   -lt 0 -AND
+                        $Rectangle.Right  -lt 0) {
+                        Write-Warning "$($_.ProcessName) `($($_.Id)`) is minimized! Coordinates will not be accurate."
+                    }
+                    $Object = [PSCustomObject]@{
+                        Id          = $_.Id
+                        ProcessName = $_.ProcessName
+                        Size        = $Size
+                        TopLeft     = $TopLeft
+                        BottomRight = $BottomRight
+                    }
+                    $Object
+                }
+            }
+        }
+    }
+}
+}

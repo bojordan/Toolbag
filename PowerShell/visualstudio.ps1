@@ -15,7 +15,6 @@ if (Test-Path $insiders2026) {
 function code { gsudo --integrity medium code $args }
 
 function sln {
-       
     # Get all solution files in current directory
     $slnxFiles = @(Get-ChildItem *.slnx -ErrorAction SilentlyContinue)
     $slnFiles = @(Get-ChildItem *.sln -ErrorAction SilentlyContinue)
