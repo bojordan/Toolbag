@@ -62,4 +62,4 @@ Visual Studio integration and shortcuts.
 
 ## Usage
 
-To use these scripts, dot-source `profile.ps1` in your PowerShell profile or set it as your profile. Or, `Set-PowerShellProfileDirectory` to the root of this repo.
+To use these scripts, dot-source `profile.ps1` in your PowerShell profile or set it as your profile location using `Set-PowerShellProfileDirectory`.
