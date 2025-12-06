@@ -4,7 +4,7 @@ A collection of PowerShell utilities and scripts for Windows development environ
 
 ## PowerShell Scripts
 
-### profile.ps1
+### [profile.ps1](PowerShell/profile.ps1)
 Main PowerShell profile that loads all other scripts and configures the shell environment.
 
 **Features:**
@@ -15,7 +15,7 @@ Main PowerShell profile that loads all other scripts and configures the shell en
 - Configures PATH environment with common development tools (Git, .NET, npm, VS Code)
 - Sets Beyond Compare as default comparison tool
 
-### helpers.ps1
+### [helpers.ps1](PowerShell/helpers.ps1)
 General-purpose utility functions for common development tasks.
 
 **Functions:**
@@ -27,8 +27,9 @@ General-purpose utility functions for common development tasks.
 - `Get-GitBranchList` - Lists git branches sorted by most recent commit with details
 - `Get-AssemblyVersion` - Extracts version information from .NET assemblies
 - `Decode-Clipboard` / `Decode-Text` - Base64 decoding utilities
+- `Decode-Jwt` - Decodes and pretty-prints JWT tokens (header and payload)
 
-### windowing.ps1
+### [windowing.ps1](PowerShell/windowing.ps1)
 Window management utilities using Windows API calls.
 
 **Functions:**
@@ -41,7 +42,7 @@ Window management utilities using Windows API calls.
   - Working with processes by name or ID
   - Pipeline support for batch operations
 
-### machine_setup.ps1
+### [machine_setup.ps1](PowerShell/machine_setup.ps1)
 System configuration functions for setting up a Windows development machine.
 
 **Functions:**
@@ -49,7 +50,7 @@ System configuration functions for setting up a Windows development machine.
 - `Set-CapsLockMappedToControl` - Remaps CapsLock key to Control via registry
 - `Set-PowerShellProfileDirectory` - Configures custom PowerShell profile location
 
-### visualstudio.ps1
+### [visualstudio.ps1](PowerShell/visualstudio.ps1)
 Visual Studio integration and shortcuts.
 
 **Features:**
@@ -62,4 +63,4 @@ Visual Studio integration and shortcuts.
 
 ## Usage
 
-To use these scripts, dot-source `profile.ps1` in your PowerShell profile or set it as your profile. Or, `Set-PowerShellProfileDirectory` to the root of this repo.
+To use these scripts, dot-source `profile.ps1` in your PowerShell profile or set it as your profile. Or, use `Set-PowerShellProfileDirectory` to point to the root of this repo.
