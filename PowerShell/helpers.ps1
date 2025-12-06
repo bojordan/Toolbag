@@ -62,3 +62,20 @@ function Decode-Text {
 
     [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Base64EncodedValue))
 }
+
+function Decode-Jwt {
+    param(
+        [Parameter(Mandatory=$true, ValueFromPipeline)][string]$Token
+    )
+    foreach ($i in 0..1) {
+        $data = $Token.Split('.')[$i].Replace('-', '+').Replace('_', '/')
+        switch ($data.Length % 4) {
+            0 {break}
+            2 {$data += '=='}
+            3 {$data += '='}
+        }
+        $output = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($data))
+        $output = $output.Replace("{`"", "{`n  `"").Replace("`"}", "`"`n}").Replace(",`"", ",`n  `"")
+        $output
+    }
+}
