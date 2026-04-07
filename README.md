@@ -8,7 +8,8 @@ A collection of PowerShell utilities and scripts for Windows development environ
 Main PowerShell profile that loads all other scripts and configures the shell environment.
 
 **Features:**
-- Configures posh-git with custom prompt settings
+- Lazy-loads posh-git via `PowerShell.OnIdle` event for instant shell startup
+- Startup timing diagnostics showing per-section load times
 - Sets up directory colors
 - Defines repository and tools paths with fallback locations
 - Imports all utility scripts (windowing, machine_setup, helpers, visualstudio)
@@ -33,7 +34,7 @@ General-purpose utility functions for common development tasks.
 Window management utilities using Windows API calls.
 
 **Functions:**
-- `Stop-Display` - Turns off the display (aliases: `DisplayOff`, `off`, `MonOff`)
+- `Stop-Display` - Turns off the display; defers C# interop compilation to first use (aliases: `DisplayOff`, `off`, `MonOff`)
 - `Gather-AllWindows` - Arranges all open windows in a cascading pattern
 - `Get-AllWindows` - Retrieves all processes with visible windows
 - `Set-Window` - Comprehensive window positioning and sizing utility with support for:
@@ -54,7 +55,8 @@ System configuration functions for setting up a Windows development machine.
 Visual Studio integration and shortcuts.
 
 **Features:**
-- Auto-loads Visual Studio Developer Shell (supports VS 2026 Insiders or Enterprise)
+- Lazy-loads Visual Studio Developer Shell via lightweight proxy stubs (`msbuild`, `cl`, `devenv`, `nmake`, etc.) — the dev shell is loaded on first use, not at startup
+- `Enter-VS` - Manually loads the VS Developer Shell (supports VS 2026 Insiders or Enterprise)
 - `code` - Launches VS Code with medium integrity from admin console (requires gsudo)
 - `sln` - Smart solution file launcher that:
   - Prioritizes .slnx files over .sln files
