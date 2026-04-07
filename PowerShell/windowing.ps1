@@ -2,17 +2,14 @@
 
 # https://www.powershellmagazine.com/2013/07/18/pstip-how-to-switch-off-display-with-powershell/
 # Turn display off by calling WindowsAPI.
- 
-# SendMessage(HWND_BROADCAST,WM_SYSCOMMAND, SC_MONITORPOWER, POWER_OFF)
-# HWND_BROADCAST  0xffff
-# WM_SYSCOMMAND   0x0112
-# SC_MONITORPOWER 0xf170
-# POWER_OFF       0x0002
- 
-Add-Type -TypeDefinition '
+# Compiles the interop type on first use to avoid C# compilation at startup.
+function Stop-Display {
+    if (-not ([System.Management.Automation.PSTypeName]'Utilities.Display').Type) {
+        # SendMessage(HWND_BROADCAST,WM_SYSCOMMAND, SC_MONITORPOWER, POWER_OFF)
+        Add-Type -TypeDefinition '
 using System;
 using System.Runtime.InteropServices;
- 
+
 namespace Utilities {
    public static class Display
    {
@@ -23,7 +20,7 @@ namespace Utilities {
          IntPtr wParam,
          IntPtr lParam
       );
- 
+
       public static void PowerOff ()
       {
          SendMessage(
@@ -36,8 +33,7 @@ namespace Utilities {
    }
 }
 '
-
-function Stop-Display {
+    }
     [Utilities.Display]::PowerOff()
 }
 
