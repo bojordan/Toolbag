@@ -60,8 +60,8 @@ $_sectionSw.Restart()
 $_profileTimings.Add("  visualstudio:    $($_sectionSw.ElapsedMilliseconds)ms")
 
 $_sectionSw.Restart()
-if (Test-Path "$PSScriptRoot/workspecific.ps1") {
-    . $PSScriptRoot/workspecific.ps1
+if (Test-Path "$PSScriptRoot/private.ps1") {
+    . $PSScriptRoot/private.ps1
 }
 $_profileTimings.Add("  workspecific:    $($_sectionSw.ElapsedMilliseconds)ms")
 
