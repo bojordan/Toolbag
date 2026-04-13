@@ -72,7 +72,9 @@ $env:path += ";$env:USERPROFILE\.dotnet\tools"
 $env:path += ";$env:USERPROFILE\AppData\Roaming\npm"
 $env:path += ";$env:USERPROFILE\AppData\Local\Programs\Microsoft VS Code"
 
-Set-Location $reposPath
+if (-not $env:TERM_PROGRAM -eq 'vscode') {
+    Set-Location $reposPath
+}
 
 Write-Host "Profile loaded in $($_profileSw.ElapsedMilliseconds)ms" -ForegroundColor Cyan
 $_profileTimings | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
