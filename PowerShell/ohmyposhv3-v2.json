@@ -1,0 +1,85 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "blocks": [
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "prefix": " \ue5ff ",
+            "style": "agnoster_full"
+          },
+          "leading_diamond": "\ue0b6",
+          "trailing_diamond": "\ue0b0",
+          "foreground": "#282c34",
+          "powerline_symbol": "\ue0b0",
+          "background": "#bb9f6c",
+          "type": "path",
+          "style": "diamond"
+        },
+        {
+          "properties": {
+            "display_stash_count": true,
+            "display_status": true,
+            "display_upstream_icon": true
+          },
+          "foreground": "#193549",
+          "powerline_symbol": "\ue0b0",
+          "background": "#fffb38",
+          "type": "git",
+          "style": "powerline",
+          "template": "{{ .UpstreamIcon }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }} # {{ .Working.String }}{{ end }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if .Staging.Changed }} $ {{ .Staging.String }}{{ end }}{{ if gt .StashCount 0 }} % {{ .StashCount }}{{ end }}"
+        },
+        {
+          "properties": {
+            "display_version": true,
+            "prefix": " \ue70c "
+          },
+          "foreground": "#ffffff",
+          "powerline_symbol": "\ue0b0",
+          "background": "#6CA35E",
+          "type": "dotnet",
+          "style": "powerline"
+        },
+        // {
+        //   "foreground": "#ffffff",
+        //   "powerline_symbol": "\ue0b0",
+        //   "background": "#ffff66",
+        //   "type": "root",
+        //   "style": "powerline"
+        // },
+        {
+          "properties": {
+            "always_enabled": true,
+            "color_background": true,
+            "display_exit_code": false,
+            "error_color": "#f1184c",
+            "prefix": " \ue23a"
+          },
+          "trailing_diamond": "\ue0b4",
+          "foreground": "#ffffff",
+          "powerline_symbol": "\ue0b0",
+          "background": "#2e9599",
+          "type": "exit",
+          "style": "powerline"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "newline": true,
+      "segments": [
+        {
+            "type": "text",
+            "style": "plain",
+            "foreground": "#6CA35E",
+            "template": "❯"
+            }
+      ]
+    }
+  ],
+  "version": 3,
+  "final_space": true
+}

@@ -43,8 +43,12 @@ foreach ($_vsToolName in @('msbuild','cl','link','lib','devenv','nmake','dumpbin
 Remove-Variable _vsToolName, sb -ErrorAction SilentlyContinue
 
 # Launch non-admin VS Code from Administrator console.
-# Get gsudo: choco install gsudo
-function code { gsudo --integrity medium code $args }
+# Get gsudo: choco install gsudo  (or: Bootstrap.ps1 -InstallDeps)
+# Only override `code` when gsudo is available; otherwise leave the real
+# VS Code launcher in place so a fresh DevBox isn't worse off.
+if (Get-Command gsudo -ErrorAction SilentlyContinue) {
+    function code { gsudo --integrity medium code $args }
+}
 
 function sln {
     # Get all solution files in current directory

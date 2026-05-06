@@ -1,1 +1,25 @@
+# Work-specific overrides not safe to publish
 PowerShell/private.ps1
+
+# Windows shell / RDP debris (mostly relevant while Documents Known Folder
+# is still redirected to this repo; harmless once it is not).
+desktop.ini
+Default.rdp
+Thumbs.db
+
+# Apps that write into Documents
+/IISExpress/
+/My Web Sites/
+/Custom Office Templates/
+/Visual Studio */
+/ps/
+/Cline/
+
+# Editor backups
+*.bak
+
+# Vendored modules - install via Bootstrap.ps1 -InstallDeps instead
+/PowerShell/Modules/
+
+# IDE / editor metadata (uncomment if you ever want to share .vscode/)
+# .vscode/
