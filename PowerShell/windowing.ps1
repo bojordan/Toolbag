@@ -41,6 +41,17 @@ Set-Alias DisplayOff Stop-Display
 Set-Alias off Stop-Display
 Set-Alias MonOff Stop-Display
 
+# When the current directory is inside a git repo, set the terminal title to
+# the repo's name, prefixed with the git-branch glyph (U+2387) so repo tabs
+# stand out. The `u{2387} escape keeps it independent of file encoding. Outside
+# a repo the title is left as-is.
+function Update-RepoTitle {
+    $root = Get-GitRepoRoot
+    if ($root) {
+        Set-Title "`u{2387} $(Split-Path -Leaf $root)"
+    }
+}
+
 function Gather-AllWindows {
     $allWindows = Get-AllWindows
     $offset = 0

@@ -30,6 +30,23 @@ function Get-GitRemote {
     git config --get remote.origin.url
 }
 
+# Walk up from $Path looking for a .git entry (a directory in a normal repo, a
+# file in a worktree/submodule) and return the repo root, or $null if the path
+# isn't inside a git repo. Pure PowerShell so it doesn't spawn git on every
+# directory change.
+function Get-GitRepoRoot {
+    param([string]$Path = (Get-Location).Path)
+
+    $dir = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    while ($dir) {
+        if (Test-Path -LiteralPath (Join-Path $dir.FullName '.git')) {
+            return $dir.FullName
+        }
+        $dir = $dir.Parent
+    }
+    return $null
+}
+
 # https://stackoverflow.com/questions/5188320/how-can-i-get-a-list-of-git-branches-ordered-by-most-recent-commit
 function Get-GitBranchList {
     git branch --sort=-committerdate --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(color:red)%(objectname:short)%(color:reset) - %(contents:subject) - %(authorname) (%(color:green)%(committerdate:relative)%(color:reset))'
