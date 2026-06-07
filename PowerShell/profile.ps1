@@ -98,6 +98,15 @@ if ((-not ($env:TERM_PROGRAM -eq 'vscode')) -and $reposPath -and (Test-Path $rep
     Set-Location $reposPath
 }
 
+# Keep the terminal title in sync with the current git repo. LocationChangedAction
+# fires on every cd/pushd/popd, so this only recomputes on a directory change
+# rather than on every prompt redraw. Call it once here for the starting directory.
+$ExecutionContext.SessionState.InvokeCommand.LocationChangedAction = {
+    param($old, $new)
+    Update-RepoTitle
+}
+Update-RepoTitle
+
 Write-Host "Profile loaded in $($_profileSw.ElapsedMilliseconds)ms" -ForegroundColor Cyan
 $_profileTimings | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
 Remove-Variable _profileSw, _sectionSw, _profileTimings
