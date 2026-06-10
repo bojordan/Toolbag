@@ -41,6 +41,21 @@ Set-Alias DisplayOff Stop-Display
 Set-Alias off Stop-Display
 Set-Alias MonOff Stop-Display
 
+# Abbreviate a dotted repo name so long namespace prefixes don't eat the tab.
+# Every dot-segment except the last collapses to its first letter; the final
+# (most specific) segment is kept whole, since that's what you actually scan
+# for. e.g. "foo.bar.bat.thing" -> "f.b.b.thing". Names without dots, or with
+# only one segment, are returned unchanged.
+function Format-RepoName {
+    param([Parameter(Mandatory)][string] $Name)
+
+    $parts = $Name.Split('.')
+    if ($parts.Count -lt 2) { return $Name }
+
+    $prefix = ($parts[0..($parts.Count - 2)] | ForEach-Object { $_.Substring(0, 1) }) -join '.'
+    "$prefix.$($parts[-1])"
+}
+
 # When the current directory is inside a git repo, set the terminal title to
 # the repo's name, prefixed with the git-branch glyph (U+2387) so repo tabs
 # stand out. The `u{2387} escape keeps it independent of file encoding. Outside
@@ -48,7 +63,7 @@ Set-Alias MonOff Stop-Display
 function Update-RepoTitle {
     $root = Get-GitRepoRoot
     if ($root) {
-        Set-Title "`u{2387} $(Split-Path -Leaf $root)"
+        Set-Title "`u{2387} $(Format-RepoName (Split-Path -Leaf $root))"
     }
 }
 
