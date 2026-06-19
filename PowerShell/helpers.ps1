@@ -96,3 +96,35 @@ function Decode-Jwt {
         $output
     }
 }
+
+# Wrap the VS Code CLI so that launching a folder (e.g. `code .`) prefers a
+# single *.code-workspace file in that folder over opening the bare folder.
+# If the target directory contains exactly one workspace file, that workspace
+# is opened instead; zero or multiple workspace files, non-directory targets,
+# or any option/flag arguments pass straight through to code unchanged.
+function code {
+    $codeCmd = Get-Command code.cmd -CommandType Application -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $codeCmd) {
+        $codeCmd = Get-Command code -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+    }
+    if (-not $codeCmd) {
+        Write-Error 'Unable to locate the VS Code CLI (code) on PATH.'
+        return
+    }
+
+    $forwardArgs = $args
+    # Only special-case a single positional directory argument (e.g. `code .`).
+    if ($args.Count -eq 1 -and $args[0] -is [string] -and $args[0] -notlike '-*') {
+        $target = $args[0]
+        if (Test-Path -LiteralPath $target -PathType Container) {
+            $workspaces = @(Get-ChildItem -LiteralPath $target -Filter '*.code-workspace' -File -ErrorAction SilentlyContinue)
+            if ($workspaces.Count -eq 1) {
+                $forwardArgs = @($workspaces[0].FullName)
+            }
+        }
+    }
+
+    & $codeCmd.Source @forwardArgs
+}
