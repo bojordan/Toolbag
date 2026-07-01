@@ -123,6 +123,32 @@ Visual Studio integration and shortcuts.
   - Searches current directory and subdirectories
   - Opens the first matching solution file
 
+### [private.ps1](PowerShell/private.ps1)
+A small, **tracked** loader for work-specific (or otherwise private) profile
+functions. `profile.ps1` dot-sources it near the end of startup when present.
+
+**Persistence strategy — peer repo, not a gitignored file:**
+The actual private functions no longer live in this file (the older strategy
+kept them in a gitignored `private.ps1`). Instead they live in a separate
+**peer repository** cloned side-by-side with this one. The loader:
+
+1. Resolves the repos root as the parent of this repo's directory.
+2. Finds a sibling directory matching `Toolbag_*` (excluding `Toolbag`
+   itself), so no specific peer repo name is hardcoded here.
+3. Dot-sources `<peer>\ps\profile.private.ps1` from that peer if it exists.
+
+If no peer repo is found (or the file is missing), it silently no-ops, so a
+fresh clone of just this repo works without any private functions. Because
+`private.ps1` contains only generic resolution logic and no secrets, it is
+safe to track and publish.
+
+To use it, clone your private peer repo beside this one, e.g.:
+
+```text
+C:\src\Repos\Toolbag\          # this repo (public)
+C:\src\Repos\Toolbag_work\     # peer repo with ps\profile.private.ps1
+```
+
 ## Usage
 
 To use these scripts on a new machine, run [`Bootstrap.ps1`](Bootstrap.ps1)
