@@ -46,7 +46,7 @@ Main PowerShell profile that loads all other scripts and configures the shell en
 - Startup timing diagnostics showing per-section load times
 - Sets up directory colors
 - Discovers `reposPath` and `toolsPath` from a list of candidates and falls back to the repo's own parent so a fresh DevBox still works
-- Imports all utility scripts (windowing, machine_setup, helpers, visualstudio)
+- Imports all utility scripts (windowing, machine_setup, helpers, visualstudio, node)
 - Adds existing dev-tool directories to PATH (Git, .NET, npm, VS Code, JRE) - missing ones are skipped
 - Sets Beyond Compare as default comparison tool when installed
 
@@ -122,6 +122,27 @@ Visual Studio integration and shortcuts.
   - Prioritizes .slnx files over .sln files
   - Searches current directory and subdirectories
   - Opens the first matching solution file
+
+### [node.ps1](PowerShell/node.ps1)
+Per-directory Node.js version switching via [fnm](https://github.com/Schniz/fnm).
+
+Install with `winget install Schniz.fnm`, then `fnm install --lts`. If `fnm`
+isn't on PATH the script silently no-ops, so machines without it are unaffected.
+
+**Features:**
+- `Update-FnmNodeVersion` - Applies the Node version declared by the current
+  directory tree; `profile.ps1` calls it at startup and from
+  `LocationChangedAction`, so it fires for `cd`, `Set-Location`, `pushd`, and
+  `popd` alike
+- Deliberately avoids fnm's own `--use-on-cd` hook, which installs an AllScope
+  alias over `cd` — that misses the other navigation commands and collides with
+  this profile's existing `LocationChangedAction`
+- Uses `--version-file-strategy recursive`, so a single `.nvmrc` at a repo root
+  also covers nested projects (e.g. `src/Foo/ClientApp`)
+- Walks up for `.nvmrc`, `.node-version`, or `package.json` before shelling out,
+  keeping `fnm` off the hot path for unrelated directory changes
+- Falls back to `fnm use default` when leaving a pinned tree, so a shell doesn't
+  silently retain a previous repo's Node version
 
 ### [private.ps1](PowerShell/private.ps1)
 A small, **tracked** loader for work-specific (or otherwise private) profile

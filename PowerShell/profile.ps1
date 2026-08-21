@@ -71,6 +71,10 @@ $_sectionSw.Restart()
 $_profileTimings.Add("  visualstudio:    $($_sectionSw.ElapsedMilliseconds)ms")
 
 $_sectionSw.Restart()
+. $PSScriptRoot/node.ps1
+$_profileTimings.Add("  node.ps1:        $($_sectionSw.ElapsedMilliseconds)ms")
+
+$_sectionSw.Restart()
 if (Test-Path "$PSScriptRoot/private.ps1") {
     . $PSScriptRoot/private.ps1
 }
@@ -104,8 +108,14 @@ if ((-not ($env:TERM_PROGRAM -eq 'vscode')) -and $reposPath -and (Test-Path $rep
 $ExecutionContext.SessionState.InvokeCommand.LocationChangedAction = {
     param($old, $new)
     Update-RepoTitle
+    if (Get-Command Update-FnmNodeVersion -ErrorAction SilentlyContinue) {
+        Update-FnmNodeVersion
+    }
 }
 Update-RepoTitle
+if (Get-Command Update-FnmNodeVersion -ErrorAction SilentlyContinue) {
+    Update-FnmNodeVersion
+}
 
 Write-Host "Profile loaded in $($_profileSw.ElapsedMilliseconds)ms" -ForegroundColor Cyan
 $_profileTimings | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
