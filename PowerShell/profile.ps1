@@ -99,7 +99,9 @@ foreach ($p in $_pathCandidates) {
 Remove-Variable _pathCandidates -ErrorAction SilentlyContinue
 
 if ((-not ($env:TERM_PROGRAM -eq 'vscode')) -and $reposPath -and (Test-Path $reposPath)) {
-    Set-Location $reposPath
+    if (Test-StartedInDefaultDirectory) {
+        Set-Location $reposPath
+    }
 }
 
 # Keep the terminal title in sync with the current git repo. LocationChangedAction
@@ -108,11 +110,13 @@ if ((-not ($env:TERM_PROGRAM -eq 'vscode')) -and $reposPath -and (Test-Path $rep
 $ExecutionContext.SessionState.InvokeCommand.LocationChangedAction = {
     param($old, $new)
     Update-RepoTitle
+    Update-TerminalCwd
     if (Get-Command Update-FnmNodeVersion -ErrorAction SilentlyContinue) {
         Update-FnmNodeVersion
     }
 }
 Update-RepoTitle
+Update-TerminalCwd
 if (Get-Command Update-FnmNodeVersion -ErrorAction SilentlyContinue) {
     Update-FnmNodeVersion
 }

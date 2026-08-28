@@ -67,6 +67,33 @@ function Update-RepoTitle {
     }
 }
 
+# Report the current directory to the terminal emulator via the OSC 9;9
+# "SetCwd" sequence. Windows Terminal uses this to open split panes
+# (alt+shift+-, alt+shift+d) and duplicated tabs in the directory the source
+# pane is sitting in, rather than the profile's startingDirectory. Requires
+# the matching profile to have "startingDirectory": null in settings.json.
+# The sequence is invisible to terminals that don't understand it.
+function Update-TerminalCwd {
+    $loc = $ExecutionContext.SessionState.Path.CurrentLocation
+    if ($loc.Provider.Name -eq 'FileSystem') {
+        [Console]::Write("`e]9;9;`"$($loc.ProviderPath)`"`e\")
+    }
+}
+
+# True when the shell was launched into one of the directories Windows hands
+# out by default (the user profile, a system folder, or the packaged-app
+# install root). Those mean "nobody asked for a particular directory", so the
+# profile is free to jump to the repos root. Any other starting directory was
+# deliberate -- a duplicated pane, `wt -d`, or "Open in Terminal" from Explorer
+# -- and must be left alone.
+function Test-StartedInDefaultDirectory {
+    $current = $PWD.Path.TrimEnd('\')
+    if ($current -eq $env:USERPROFILE.TrimEnd('\')) { return $true }
+    if ($env:SystemRoot -and $current.StartsWith($env:SystemRoot.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    if ($current -like '*\WindowsApps*') { return $true }
+    return $false
+}
+
 function Gather-AllWindows {
     $allWindows = Get-AllWindows
     $offset = 0
