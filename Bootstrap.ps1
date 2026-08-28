@@ -37,6 +37,22 @@
     the OneDrive KFM location, whichever is currently expected). This affects
     only the registry value; it does not move any files.
 
+.PARAMETER ConfigureWindowsTerminal
+    Clear the Windows Terminal `startingDirectory` so that duplicated tabs and
+    panes (alt+shift+-, alt+shift+d, ctrl+shift+d) open in the current pane's
+    directory instead of a fixed one. This is the half of the mechanism that
+    cannot live in this repo, because settings.json is machine-local state.
+
+    Sets "startingDirectory": null on profiles.defaults, and clears it on
+    PowerShell profiles that pin their own value (an explicit per-profile
+    value always beats defaults). Profiles that launch something other than a
+    bare PowerShell -- Anaconda prompts, cmd, WSL -- are left alone and
+    reported, since they need their own prompt-side setup anyway.
+
+    Covers Stable, Preview, and unpackaged installs. A timestamped .bak is
+    written before any change. See the README section "Opening new tabs and
+    panes in the current directory" for the full mechanism.
+
 .PARAMETER DocumentsPath
     Override the detected real Documents path. Useful if you want the stubs
     placed somewhere specific (rare).
@@ -62,6 +78,14 @@
 .EXAMPLE
     .\Bootstrap.ps1 -RestoreDocuments
     Stop redirecting Documents to this repo (legacy machine cleanup).
+
+.EXAMPLE
+    .\Bootstrap.ps1 -ConfigureWindowsTerminal
+    Make duplicated Windows Terminal tabs/panes inherit the current directory.
+
+.EXAMPLE
+    .\Bootstrap.ps1 -ConfigureWindowsTerminal -WhatIf
+    Preview exactly which Windows Terminal profiles would be changed.
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
@@ -71,6 +95,8 @@ param(
     [switch] $InstallDeps,
 
     [switch] $RestoreDocuments,
+
+    [switch] $ConfigureWindowsTerminal,
 
     [string] $DocumentsPath,
 
@@ -220,6 +246,165 @@ if ($RestoreDocuments) {
         Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders' -Name Personal -Value $DocsRoot -Force
         Write-Host "  Documents -> $DocsRoot" -ForegroundColor Green
         Write-Host "  Note: existing files in the old location are NOT moved. Sign out and back in for all apps to pick this up." -ForegroundColor DarkGray
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Optional: make Windows Terminal inherit the current directory
+#
+# This is the half of the mechanism that can't be tracked in the repo, since
+# settings.json is machine-local. The PowerShell half (Update-TerminalCwd in
+# windowing.ps1, emitting OSC 9;9) ships with the profile and needs no setup.
+# ---------------------------------------------------------------------------
+
+# Well-known guid for the built-in "Windows PowerShell" profile.
+$script:WindowsPowerShellGuid = '{61c54bbd-c2c6-5271-96e7-009a87ff44bf}'
+
+function Get-WindowsTerminalSettingsPath {
+    # Packaged installs (Store / winget): Stable, then Preview. Both can be
+    # installed and genuinely used side by side.
+    $packaged = @(
+        (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json')
+        (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json')
+    ) | Where-Object { Test-Path $_ }
+
+    if ($packaged) { return $packaged }
+
+    # Unpackaged / portable install. Only consulted when no packaged install
+    # exists, because third-party installers (notably Anaconda) drop profile
+    # fragments here even on machines that only run the Store build, and
+    # rewriting that dead file would be pointless noise.
+    @(Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\settings.json') |
+        Where-Object { Test-Path $_ }
+}
+
+# JSON round-tripping silently drops comments, and Windows Terminal's own
+# generated settings.json is commented. Detect them so we can warn rather than
+# quietly delete someone's notes. Strings are blanked first so that a "//" that
+# is really part of a URL doesn't produce a false positive.
+function Test-JsonHasComments {
+    param([string] $Text)
+    $stripped = [regex]::Replace($Text, '"(\\.|[^"\\])*"', '""')
+    return ($stripped -match '//|/\*')
+}
+
+# True only for profiles that launch a *bare* PowerShell. The Anaconda
+# "PowerShell Prompt" profile embeds powershell.exe in its commandline along
+# with a conda-activation payload, so a naive match on the exe name would
+# wrongly claim it; requiring the commandline to be nothing but the executable
+# keeps those out.
+function Test-IsPlainPowerShellProfile {
+    param($Profile)
+
+    if ($Profile.source -eq 'Windows.Terminal.PowershellCore') { return $true }
+
+    $cmd = $Profile.commandline
+    if ([string]::IsNullOrWhiteSpace($cmd)) {
+        # No commandline of its own: only the built-in Windows PowerShell
+        # profile is a safe assumption here.
+        return ($Profile.guid -eq $script:WindowsPowerShellGuid)
+    }
+
+    return ($cmd -match '^\s*"?[^"]*\b(pwsh|powershell)\.exe"?\s*$')
+}
+
+function Set-WindowsTerminalCwdInheritance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([string] $Path)
+
+    $raw = Get-Content -LiteralPath $Path -Raw
+
+    try {
+        $settings = $raw | ConvertFrom-Json
+    } catch {
+        Write-Warning "  Could not parse $Path : $_"
+        return
+    }
+
+    $changes  = [System.Collections.Generic.List[string]]::new()
+    $skipped  = [System.Collections.Generic.List[string]]::new()
+
+    # --- profiles.defaults -------------------------------------------------
+    if (-not $settings.profiles) {
+        Write-Warning "  No 'profiles' object in $Path; skipping."
+        return
+    }
+    if (-not $settings.profiles.defaults) {
+        $settings.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) -Force
+    }
+
+    $defaults = $settings.profiles.defaults
+    $hasKey   = $defaults.PSObject.Properties.Name -contains 'startingDirectory'
+    if (-not $hasKey -or $null -ne $defaults.startingDirectory) {
+        $defaults | Add-Member -NotePropertyName startingDirectory -NotePropertyValue $null -Force
+        $changes.Add('profiles.defaults -> startingDirectory: null')
+    }
+
+    # --- individual profiles ----------------------------------------------
+    # An explicit per-profile startingDirectory always beats defaults, so any
+    # PowerShell profile that pins one has to be cleared too.
+    foreach ($p in @($settings.profiles.list)) {
+        if (-not ($p.PSObject.Properties.Name -contains 'startingDirectory')) { continue }
+        if ($null -eq $p.startingDirectory) { continue }
+
+        $name = if ($p.name) { $p.name } else { $p.guid }
+        if (Test-IsPlainPowerShellProfile -Profile $p) {
+            $old = $p.startingDirectory
+            $p.startingDirectory = $null
+            $changes.Add("profile '$name' -> startingDirectory: null (was '$old')")
+        } else {
+            $skipped.Add("$name (pins '$($p.startingDirectory)')")
+        }
+    }
+
+    if ($changes.Count -eq 0) {
+        Write-Host "  [=] Already configured: $Path" -ForegroundColor DarkGray
+    } else {
+        foreach ($c in $changes) { Write-Host "      $c" -ForegroundColor DarkGray }
+
+        if (Test-JsonHasComments -Text $raw) {
+            Write-Warning "  $Path contains comments; JSON rewriting will drop them (a .bak is kept)."
+        }
+
+        if ($PSCmdlet.ShouldProcess($Path, 'Clear startingDirectory')) {
+            try {
+                $backup = "$Path.bak-$(Get-Date -Format yyyyMMddHHmmss)"
+                Copy-Item -LiteralPath $Path -Destination $backup
+
+                # Depth must comfortably exceed the nesting in settings.json;
+                # too shallow and ConvertTo-Json flattens objects into strings,
+                # corrupting the file. Write without a BOM so the result is
+                # identical under both PowerShell editions.
+                $json = $settings | ConvertTo-Json -Depth 100
+                [System.IO.File]::WriteAllText($Path, $json, (New-Object System.Text.UTF8Encoding($false)))
+
+                Write-Host "  [~] Updated (backup: $(Split-Path -Leaf $backup))" -ForegroundColor Yellow
+            } catch {
+                # Never let a locked or read-only settings.json abort the rest
+                # of the bootstrap run.
+                Write-Warning "  Failed to update $Path : $_"
+            }
+        }
+    }
+
+    foreach ($s in $skipped) {
+        Write-Host "  [!] Left alone: $s" -ForegroundColor DarkGray
+    }
+}
+
+if ($ConfigureWindowsTerminal) {
+    Write-Host ""
+    Write-Host "Configuring Windows Terminal to inherit the current directory..." -ForegroundColor Cyan
+
+    $wtSettings = @(Get-WindowsTerminalSettingsPath)
+    if ($wtSettings.Count -eq 0) {
+        Write-Warning "No Windows Terminal settings.json found. Launch Windows Terminal once, then re-run."
+    } else {
+        foreach ($s in $wtSettings) {
+            Write-Host "  $s" -ForegroundColor DarkGray
+            Set-WindowsTerminalCwdInheritance -Path $s
+        }
+        Write-Host "  Open a NEW terminal window to pick this up." -ForegroundColor DarkGray
     }
 }
 
