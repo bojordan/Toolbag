@@ -31,6 +31,18 @@ if (Test-Path $_bcompPath) {
 }
 Remove-Variable _bcompPath -ErrorAction SilentlyContinue
 
+$_lightswitchPath = 'C:\Program Files\PowerToys\bin\PowerToys.LightSwitch.CLI.exe'
+if (Test-Path $_lightswitchPath) {
+    Set-Alias lightswitch $_lightswitchPath
+}
+Remove-Variable _lightswitchPath -ErrorAction SilentlyContinue
+
+$_filelocksmithPath = 'C:\Program Files\PowerToys\bin\PowerToys.FileLocksmith.CLI.exe'
+if (Test-Path $_filelocksmithPath) {
+    Set-Alias filelocksmith $_filelocksmithPath
+}
+Remove-Variable _filelocksmithPath -ErrorAction SilentlyContinue
+
 # Define paths. The first hit wins; the last entry is a derived fallback so
 # that the repo always knows where it lives even on a fresh DevBox where
 # neither D:\ nor C:\src\Repos exists yet (the repo's own parent is the
